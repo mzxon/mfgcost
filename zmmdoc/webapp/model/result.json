@@ -1,0 +1,21 @@
+{
+    "result": [
+        { 
+            "ReferenceDocument":"",
+            "GoodsMovementType":"",
+            "PostingDate":"",
+            "MaterialDocumentHeaderText":"",
+            "ProcessingResult":"",
+            "Material":"",
+            "MaterialList":"",
+            "Plant":"",
+            "StorageLocation":"",
+            "StorageLocationName":"",
+            "ManufacturingOrder":"",
+            "QuantityInEntryUnit":"",
+            "EntryUnit":"",
+            "Batch":"",
+            "SerialNumber":""
+        }
+    ]
+}
