@@ -1,0 +1,180 @@
+<mvc:View controllerName="worldexzmmdoc.controller.Main"
+    displayBlock="true"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+	xmlns:core="sap.ui.core"
+	xmlns:table="sap.ui.table">
+    <Page id="page" title="{i18n>title}" showHeader="false" class="sapUiContentPadding">
+        <content>
+            <table:Table
+                id="headerTable"
+                selectionMode="Single"
+                selectionBehavior="Row"
+                rows="{header>/headerData}"
+                rowSelectionChange="onHeaderTableSelect"
+                >
+                <table:extension>
+                    <Toolbar height="50px">                           <!--테이블 행 수-->
+                        <Title text="{i18n>headertitle} (  )" level="H2"/>
+                        <ToolbarSeparator></ToolbarSeparator>                   
+                        <ToolbarSpacer></ToolbarSpacer>     
+                        <Button text="Excel Upload" visible="true" tooltip="Excel Upload" press="onExcelUpload"/>
+                        <Button text="Save" visible="true" tooltip="Save" press="onSaveData"/>
+                    </Toolbar>
+                </table:extension>
+                <table:columns>
+                    <!-- 납품서 -->
+                    <table:Column width="100px" hAlign="Center">
+                        <Label text="{i18n>ReferenceDocument}"/>
+                        <table:template>
+                            <HBox justifyContent="Start">
+			                    <Text text="{header>납품서}" wrapping="false"/>                        
+                            </HBox>
+                        </table:template>
+                    </table:Column>
+                    <!-- 이동유형 -->
+                    <table:Column width="200px" hAlign="Center">
+                        <Label text="{i18n>GoodsMovementType}" />
+                        <table:template>
+                            <HBox justifyContent="Start">
+			                    <Text text="{header>이동 유형}" wrapping="false" />         
+                            </HBox>                                    
+                        </table:template>
+                    </table:Column>
+                    <!-- 전기일 -->
+                    <table:Column width="200px" hAlign="Center">
+                        <Label text="{i18n>PostingDate}" />
+                        <table:template>
+                            <HBox justifyContent="Start">
+			                    <Text text="{header>전기일}" wrapping="false" />          
+                            </HBox>
+                        </table:template>
+                    </table:Column>
+                    <!-- 문서헤더텍스트 -->
+                    <table:Column width="150px" hAlign="Center">
+                        <Label text="{i18n>MaterialDocumentHeaderText}" />
+                        <table:template>
+                            <HBox justifyContent="End">
+			                    <Text text="{header>문서 헤더 텍스트}" wrapping="false" />      
+                            </HBox>
+                        </table:template>
+                    </table:Column>              
+                    <!-- 처리결과 -->
+                    <table:Column width="150px" hAlign="Center">
+                        <Label text="{i18n>ProcessingResult}" />
+                        <table:template>
+                            <HBox justifyContent="End">
+			                    <Text text="{oMMDOCFIELD>ProcessingResult}" wrapping="false" />
+                            </HBox>
+                        </table:template>
+                    </table:Column>    
+                </table:columns>   
+            </table:Table>
+
+            <table:Table
+                id="itemTable"
+                rows="{item>/itemData}"
+                >
+                <table:extension>
+                    <Toolbar height="50px">                           <!--테이블 행 수-->
+                        <Title text="{i18n>itemtitle} (  )" level="H2"/>
+                        <ToolbarSeparator></ToolbarSeparator>                   
+                        <ToolbarSpacer></ToolbarSpacer>     
+                    </Toolbar>
+                </table:extension>
+                <table:columns>
+                    <!-- 자재ID -->
+                    <table:Column width="150px" hAlign="Center">
+                        <Label text="{i18n>Material}" />
+                        <table:template>
+                            <HBox justifyContent="End">
+			                    <Text text="{item>자재 ID}" wrapping="false" />
+                            </HBox>
+                        </table:template>
+                    </table:Column>          
+                    <!-- 자재내역 -->
+                    <table:Column width="150px" hAlign="Center">
+                        <Label text="{i18n>MaterialList}" />
+                        <table:template>
+                            <HBox justifyContent="End">
+			                    <Text text="{item>자재 내역}" wrapping="false" />
+                            </HBox>
+                        </table:template>
+                    </table:Column> 
+                    <!-- 플랜트 -->
+                    <table:Column width="150px" hAlign="Center">
+                        <Label text="{i18n>Plant}" />
+                        <table:template>
+                            <HBox justifyContent="End">
+			                    <Text text="{item>플랜트}" wrapping="false" />
+                            </HBox>
+                        </table:template>
+                    </table:Column>          
+                    <!-- 저장장소 ID -->
+                    <table:Column width="150px" hAlign="Center">
+                        <Label text="{i18n>StorageLocation}" />
+                        <table:template>
+                            <HBox justifyContent="End">
+			                    <Text text="{item>저장 장소 ID}" wrapping="false" />
+                            </HBox>
+                        </table:template>
+                    </table:Column> 
+                    <!-- 저장장소 Name -->
+                    <table:Column width="150px" hAlign="Center">
+                        <Label text="{i18n>StorageLocationName}" />
+                        <table:template>
+                            <HBox justifyContent="End">
+			                    <Text text="{item>저장 장소}" wrapping="false" />
+                            </HBox>
+                        </table:template>
+                    </table:Column> 
+                    <!-- 생산오더 -->
+                    <table:Column width="150px" hAlign="Center">
+                        <Label text="{i18n>ManufacturingOrder}" />
+                        <table:template>
+                            <HBox justifyContent="End">
+			                    <Text text="{item>생산 오더}" wrapping="false" />
+                            </HBox>
+                        </table:template>
+                    </table:Column> 
+                    <!-- 수량 -->
+                    <table:Column width="150px" hAlign="Center">
+                        <Label text="{i18n>QuantityInEntryUnit}" />
+                        <table:template>
+                            <HBox justifyContent="End">
+			                    <Text text="{item>수량}" wrapping="false" />
+                            </HBox>
+                        </table:template>
+                    </table:Column>  
+                    <!-- 단위 -->
+                    <table:Column width="150px" hAlign="Center">
+                        <Label text="{i18n>EntryUnit}" />
+                        <table:template>
+                            <HBox justifyContent="End">
+			                    <Text text="{item>단위}" wrapping="false" />
+                            </HBox>
+                        </table:template>
+                    </table:Column> 
+                    <!-- Batch -->
+                    <table:Column width="150px" hAlign="Center">
+                        <Label text="{i18n>Batch}" />
+                        <table:template>
+                            <HBox justifyContent="End">
+			                    <Text text="{item>Batch}" wrapping="false" />
+                            </HBox>
+                        </table:template>
+                    </table:Column>   
+                    <!-- Serial Number -->
+                    <table:Column width="150px" hAlign="Center">
+                        <Label text="{i18n>SerialNumber}" />
+                        <table:template>
+                            <HBox justifyContent="End">
+			                    <Text text="{item>Serial Number}" wrapping="false" />
+                            </HBox>
+                        </table:template>
+                    </table:Column>                          
+                </table:columns>   
+            </table:Table>
+        </content>
+    </Page>
+</mvc:View>
