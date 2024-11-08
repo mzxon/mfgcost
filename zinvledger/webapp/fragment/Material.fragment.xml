@@ -1,0 +1,39 @@
+<core:FragmentDefinition
+	xmlns="sap.ui.comp.valuehelpdialog"
+	xmlns:m="sap.m"
+	xmlns:fb="sap.ui.comp.filterbar"
+	xmlns:core="sap.ui.core">
+	<ValueHelpDialog
+		title="{i18n>Material}"
+		ok=".onValueHelpOkPress"
+		cancel=".onValueHelpCancelPress"
+		afterClose=".onValueHelpAfterClose"
+		supportRanges="false"
+		key="Material"
+		descriptionKey="MaterialText">
+		<filterBar>
+			<fb:FilterBar advancedMode="true" search=".onVHFBMT" isRunningInValueHelpDialog="true">
+				<fb:filterGroupItems>
+					<fb:FilterGroupItem
+						groupName="FB_GROUP"
+						name="Material"
+						label="{i18n>Material}"
+						visibleInFilterBar="true">
+						<fb:control>
+							<m:Input name="Material" />
+						</fb:control>
+					</fb:FilterGroupItem>
+					<fb:FilterGroupItem
+						groupName="FB_GROUP"
+						name="MaterialText"
+						label="{i18n>MaterialText}"
+						visibleInFilterBar="true">
+						<fb:control>
+							<m:Input name="MaterialText" />
+						</fb:control>
+					</fb:FilterGroupItem>
+				</fb:filterGroupItems>
+			</fb:FilterBar>
+		</filterBar>
+	</ValueHelpDialog>
+</core:FragmentDefinition>

@@ -1,7 +1,7 @@
 {
-  "_version": "1.59.0",
+  "_version": "1.64.0",
   "sap.app": {
-    "id": "worldexzmmdoc",
+    "id": "zinvledger",
     "type": "application",
     "i18n": "i18n/i18n.properties",
     "applicationVersion": {
@@ -12,8 +12,42 @@
     "resources": "resources.json",
     "sourceTemplate": {
       "id": "@sap/generator-fiori:basic",
-      "version": "1.14.4",
-      "toolsId": "268cd191-4b0a-4388-9852-47364818dff1"
+      "version": "1.15.3",
+      "toolsId": "319a7102-3865-458f-ae89-d06dc196452f"
+    },
+    "dataSources": {
+      "mainService": {
+        "uri": "/sap/opu/odata/sap/ZSB_INVLEDGER_O2UI/",
+        "type": "OData",
+        "settings": {
+          "annotations": [
+            "ZSB_INVLEDGER_O2UI_VAN"
+          ],
+          "localUri": "localService/metadata.xml",
+          "odataVersion": "2.0"
+        }
+      },
+      "YY1_MATERIAL_LEDGER_CDS": {
+        "uri": "/dest/sap/opu/odata/sap/YY1_MATERIAL_LEDGER_CDS/",
+        "type": "OData",
+        "settings": {
+           "odataVersion": "2.0"
+        }
+     },
+     "YY1_MATERIALTYPE_INVLEDGER_CDS": {
+        "uri": "/dest/sap/opu/odata/sap/YY1_MATERIALTYPE_INVLEDGER_CDS/",
+        "type": "OData",
+        "settings": {
+            "odataVersion": "2.0"
+        }
+      },
+      "ZSB_INVLEDGER_O2UI_VAN": {
+        "uri": "/sap/opu/odata/IWFND/CATALOGSERVICE;v=2/Annotations(TechnicalName='ZSB_INVLEDGER_O2UI_VAN',Version='0001')/$value/",
+        "type": "ODataAnnotation",
+        "settings": {
+          "localUri": "localService/ZSB_INVLEDGER_O2UI_VAN.xml"
+        }
+      }
     }
   },
   "sap.ui": {
@@ -35,17 +69,14 @@
   "sap.ui5": {
     "flexEnabled": false,
     "dependencies": {
-      "minUI5Version": "1.120.8",
+      "minUI5Version": "1.124.9",
       "libs": {
         "sap.m": {},
-        "sap.ui.core": {},
-        "sap.f": {},
-        "sap.suite.ui.generic.template": {},
-        "sap.ui.comp": {},
-        "sap.ui.generic.app": {},
-        "sap.ui.table": {},
-        "sap.ushell": {}
+        "sap.ui.core": {}
       }
+    },
+    "config": {
+      "fullWidth": true
     },
     "contentDensities": {
       "compact": true,
@@ -55,8 +86,13 @@
       "i18n": {
         "type": "sap.ui.model.resource.ResourceModel",
         "settings": {
-          "bundleName": "worldexzmmdoc.i18n.i18n"
+          "bundleName": "zinvledger.i18n.i18n"
         }
+      },
+      "": {
+        "dataSource": "mainService",
+        "preload": true,
+        "settings": {}
       }
     },
     "resources": {
@@ -71,7 +107,7 @@
         "routerClass": "sap.m.routing.Router",
         "viewType": "XML",
         "async": true,
-        "viewPath": "worldexzmmdoc.view",
+        "viewPath": "zinvledger.view",
         "controlAggregation": "pages",
         "controlId": "app",
         "clearControlAggregation": false
@@ -96,14 +132,10 @@
       }
     },
     "rootView": {
-      "viewName": "worldexzmmdoc.view.App",
+      "viewName": "zinvledger.view.App",
       "type": "XML",
       "async": true,
       "id": "App"
     }
-  },
-  "sap.cloud": {
-    "public": true,
-    "service": "worldexzmmdoc"
   }
 }

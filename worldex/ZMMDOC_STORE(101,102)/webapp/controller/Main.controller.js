@@ -30,6 +30,23 @@ function (Controller, JSONModel, Fragment, MessageToast) {
             ITEM_TABLE = VIEW.byId("itemTable");
 
             I18N = this.getOwnerComponent().getModel('i18n').getResourceBundle();   
+            
+            // header 테이블 바인딩
+            HEADER = new JSONModel({
+                tableCnt: 0,
+                headerData: [],
+                result: ""
+            });
+            
+            VIEW.setModel(HEADER, "header");
+
+            // item 테이블 바인딩
+            ITEM = new JSONModel({
+                tableCnt: 0,
+                itemData: []
+            });
+
+            VIEW.setModel(ITEM, "item");
 
         },
         /************** OData ***********************/
@@ -49,6 +66,7 @@ function (Controller, JSONModel, Fragment, MessageToast) {
                 const oModel = new sap.ui.model.odata.v2.ODataModel(serviceUrl, { useBatch: false });
                 MODEL_LIST[name] = { oModel, oEntitySet: entitySet };
             });
+
         },
 
         /************** Excel ***********************/
@@ -141,7 +159,6 @@ function (Controller, JSONModel, Fragment, MessageToast) {
         // 업로드
         onUploadSet: function(oEvent) {
             var headerData = []; // 모든 행의 데이터를 담을 배열
-            HEADER = new JSONModel();
         
             // 엑셀 데이터
             var list = this.getColExcel();            
@@ -156,6 +173,7 @@ function (Controller, JSONModel, Fragment, MessageToast) {
             
             // 칼럼명 -> 데이터명 -> 저장
             this.excelSheetsData.forEach(e => {  // 전체 엑셀 데이터 반복
+                
                 e.forEach(item => {              // 각 행별로 반복
                     var rowHeaderData = {};      // 각 행의 데이터를 담을 객체
                     var rowItemData = {};
@@ -194,6 +212,7 @@ function (Controller, JSONModel, Fragment, MessageToast) {
                     // ITEMDATA를 헤더별로 그룹화
                     if (rowItemData) {
                         const rowHeaderDataKey = JSON.stringify(rowHeaderData);
+                        // debugger;
                         if (ITEMDATA[rowHeaderDataKey]) {
                             ITEMDATA[rowHeaderDataKey].push(rowItemData);
                         }
@@ -202,12 +221,32 @@ function (Controller, JSONModel, Fragment, MessageToast) {
             });
             
             // 모델에 데이터 설정
-            HEADER.setData({ headerData: headerData });
-            VIEW.setModel(HEADER, "header");
+            this._sortData(headerData); //정렬
+
+            // 재설정
+            HEADER.setProperty("/tableCnt", headerData.length);
+            HEADER.setProperty("/headerData", headerData);
 
             sap.m.MessageToast.show("업로드되었습니다.");
             this.onCloseDialog();
             
+        },
+
+        // 엑셀 데이터 정렬
+        _sortData: function (data) {
+            data.sort((a, b) => {
+                // 납품서
+                var doc = a["납품서"].localeCompare(b["납품서"]);
+                if (doc !== 0) return doc;
+                // 이동유형
+                var move_type = a["이동 유형"] - b["이동 유형"];
+                if (move_type !== 0) return move_type;
+                // 전기일
+                let dateA = new Date(a["전기일"]);
+                let dateB = new Date(b["전기일"]);
+                return dateA - dateB;
+
+            })
         },
 
         // item 테이블 바인딩
@@ -216,34 +255,20 @@ function (Controller, JSONModel, Fragment, MessageToast) {
             var oIndex = HEADER_TABLE.getSelectedIndices();
             var oRow = HEADER_TABLE.getContextByIndex(oIndex).getObject();
             var headerKey = JSON.stringify(oRow);
+            var filteredItems = [];
             
-            // 전역 변수에서 관련된 아이템 데이터 가져오기
-            var filteredItems = ITEMDATA[headerKey] || [];
-            ITEM = new JSONModel();
-
-            var itemModel = new sap.ui.model.json.JSONModel({ itemData: filteredItems });
-            this.getView().setModel(itemModel, "item");
+            // 데이터 유효성 검사 (자재내역, 저장장소)
+            for (const e of ITEMDATA[headerKey]) {
+                if (!e["자재 내역"] || !e["저장 장소"]) {
+                    continue;
+                }
+                filteredItems.push(e);
+            };
             
-        },
-
-        setViewModel: function () {
-            var label = HEADER_TABLE.getColumns();
-            console.log(label);
-
-            HEADER_TABLE.getColumns().forEach(function (oColumn) {
-                var sLabelText = oColumn.getLabel().getText();
-
-                varPAYLOAD.find(function (item) {
-                    return item.label == sLabelText;                    
-                })
-
-                var oDataItem = oD
-
-                console.log(sLabelText);
-            });
-
-
-            console.log(oModel);
+            // 재설정
+            ITEM.setProperty("/tableCnt", filteredItems.length);
+            ITEM.setProperty("/itemData", filteredItems);
+            
         },
 
         // 업로드된 후
@@ -319,23 +344,19 @@ function (Controller, JSONModel, Fragment, MessageToast) {
                 filter = [
                     new sap.ui.model.Filter("Product", "EQ", rowItemData["자재 ID"])
                 ];
-                console.log(filter);
                 $.when(
                     that._getODataRead("oPRODES", filter, max)
                 ).done(function(oResults){
-                    console.log(oResults);
                     rowItemData["자재 내역"] = oResults[0].ProductDescription;
+                    
                 })
             } else if (type == "sto"){
                 filter = [
                     new sap.ui.model.Filter("StorageLocation", "EQ", rowItemData["저장 장소 ID"])
                 ];
-                
-                console.log(filter);
                 $.when(
                     that._getODataRead("oSTOLOC", filter, max)
                 ).done(function(oResults){
-                    console.log(oResults);
                     rowItemData["저장 장소"] = oResults[0].StorageLocationName;
                 })
             }
@@ -356,9 +377,6 @@ function (Controller, JSONModel, Fragment, MessageToast) {
                 urlParameters: aParameters,
                 success: function (oReturn, response) {
                     var aResult = oReturn.results;
-                    TOKEN = response.headers["x-csrf-token"];
-                    console.log(TOKEN);
-                    console.log(aResult);
                     deferred.resolve(aResult);
                 },
                 error: function (oError) {
@@ -375,6 +393,8 @@ function (Controller, JSONModel, Fragment, MessageToast) {
                     }
                 }
             });
+            // 토큰 get
+            TOKEN = oModel.getSecurityToken();
             
             return deferred.promise();
         },
@@ -383,20 +403,16 @@ function (Controller, JSONModel, Fragment, MessageToast) {
         // API 요청
         onSaveData: function () {
             var that = this;
+
             // ITEMDATA : 헤더(key)를 기준으로 아이템(value)가 그룹화되있음
             Object.keys(ITEMDATA).forEach(function(key) {
                 //헤더
                 var headerInfo = JSON.parse(key);
                 var dataList  = [];
-
-                const csrfToken = this.getModel().getSecurityToken();
-                console.log(csrfToken);
             
                 // 아이템
                 ITEMDATA[key].forEach(function(item) {
-                    console.log("Item Data:", item);
                     dataList.push(item);
-                    console.log("Item Data:", dataList);
                 });
 
                 that.requestAPI(headerInfo, dataList);
@@ -405,11 +421,72 @@ function (Controller, JSONModel, Fragment, MessageToast) {
             
         },
 
-        requestAPI: function (headerInfo, dataList) {
-            var apiUrl = 'https://my405699-api.s4hana.cloud.sap/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/A_MaterialDocumentHeader'
-            var sendData;
-            
-        
-        }
+        requestAPI: async function (headerInfo, dataList) {
+            const apiUrl = "sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/A_MaterialDocumentHeader";
+
+            for (const item of dataList) {
+                // 전기일 형식 변환
+                var date = this.formatDateToSAPDate(headerInfo["전기일"]);
+
+                // batch/serial
+                const number = String(item["Batch"] || item["Serial Number"]);
+                
+                fetch(apiUrl, {
+                    headers: {
+                        "x-csrf-token": TOKEN,
+                        "Content-Type": "application/json", 
+                    },
+                    method: "POST",
+                    body: JSON.stringify({
+                        "PostingDate": date,                                                // 전기일
+                        "GoodsMovementCode": "02",                                          // 고정값
+                        "ReferenceDocument": headerInfo["납품서"],                          // 납품서
+                        "MaterialDocumentHeaderText": headerInfo["문서 헤더 텍스트"],        // 문서헤더텍스트
+                        "to_MaterialDocumentItem": {
+                            "results": [
+                                {
+                                    "Material": item["자재 ID"],                            // 자재ID
+                                    "Plant": String(item["플랜트"]),                        // 플랜트
+                                    "GoodsMovementType": String(headerInfo["이동 유형"]),   // 이동유형
+                                    "ManufacturingOrder": String(item["생산 오더"]),        // 생산오더
+                                    "ManufacturingOrderItem": "1",                          // 고정값
+                                    "GoodsMovementRefDocType": "F",                         // 고정값
+                                    "StorageLocation": String(item["저장 장소 ID"]),         // 저장장소ID
+                                    "EntryUnit": item["단위"],                               // 단위
+                                    "QuantityInEntryUnit": String(item["수량"]),             // 수량
+                                    "to_SerialNumbers": {                                   // 시리얼번호있으면 시리얼, 없으면 배치
+                                        "results": [
+                                            {
+                                                "SerialNumber":String(number)
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }   
+                    }),
+                })
+                .then(response => {
+                    console.log(response);
+                })
+                .then(data => {
+                    // 성공적인 응답 데이터 처리
+                    console.log("성공:", data);
+                    HEADER.setProperty("/result", "성공");
+                })
+                .catch(error => {
+                    // 요청 중 발생한 오류 처리
+                    console.error("실패:", error);
+                    HEADER.setProperty("/result", "실패");
+                });
+            }
+        },
+
+        formatDateToSAPDate : function (dateString) {
+            // 입력된 날짜 문자열을 UTC 기준으로 Date 객체로 변환
+            const date = new Date(dateString + "T00:00:00Z"); 
+            const timestamp = date.getTime(); // 밀리초 단위 타임스탬프를 가져옴
+            return `/Date(${timestamp})/`; // SAP 형식으로 변환
+        }   
     });
 });

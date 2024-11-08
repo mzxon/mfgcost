@@ -15,7 +15,7 @@
                 >
                 <table:extension>
                     <Toolbar height="50px">                           <!--테이블 행 수-->
-                        <Title text="{i18n>headertitle} (  )" level="H2"/>
+                        <Title text="{i18n>headertitle} ( {header>/tableCnt} )" level="H2"/>
                         <ToolbarSeparator></ToolbarSeparator>                   
                         <ToolbarSpacer></ToolbarSpacer>     
                         <Button text="Excel Upload" visible="true" tooltip="Excel Upload" press="onExcelUpload"/>
@@ -24,7 +24,7 @@
                 </table:extension>
                 <table:columns>
                     <!-- 납품서 -->
-                    <table:Column width="100px" hAlign="Center">
+                    <table:Column width="auto" hAlign="Center">
                         <Label text="{i18n>ReferenceDocument}"/>
                         <table:template>
                             <HBox justifyContent="Start">
@@ -33,7 +33,7 @@
                         </table:template>
                     </table:Column>
                     <!-- 이동유형 -->
-                    <table:Column width="200px" hAlign="Center">
+                    <table:Column width="auto" hAlign="Center">
                         <Label text="{i18n>GoodsMovementType}" />
                         <table:template>
                             <HBox justifyContent="Start">
@@ -42,7 +42,7 @@
                         </table:template>
                     </table:Column>
                     <!-- 전기일 -->
-                    <table:Column width="200px" hAlign="Center">
+                    <table:Column width="auto" hAlign="Center">
                         <Label text="{i18n>PostingDate}" />
                         <table:template>
                             <HBox justifyContent="Start">
@@ -51,7 +51,7 @@
                         </table:template>
                     </table:Column>
                     <!-- 문서헤더텍스트 -->
-                    <table:Column width="150px" hAlign="Center">
+                    <table:Column width="auto" hAlign="Center">
                         <Label text="{i18n>MaterialDocumentHeaderText}" />
                         <table:template>
                             <HBox justifyContent="End">
@@ -60,11 +60,11 @@
                         </table:template>
                     </table:Column>              
                     <!-- 처리결과 -->
-                    <table:Column width="150px" hAlign="Center">
+                    <table:Column width="auto" hAlign="Center">
                         <Label text="{i18n>ProcessingResult}" />
                         <table:template>
                             <HBox justifyContent="End">
-			                    <Text text="{oMMDOCFIELD>ProcessingResult}" wrapping="false" />
+			                    <Text text="{header>/result}" wrapping="false" />
                             </HBox>
                         </table:template>
                     </table:Column>    
@@ -74,17 +74,20 @@
             <table:Table
                 id="itemTable"
                 rows="{item>/itemData}"
+                selectionMode="Single"
+                selectionBehavior="Row"
+                width="100%"
                 >
                 <table:extension>
                     <Toolbar height="50px">                           <!--테이블 행 수-->
-                        <Title text="{i18n>itemtitle} (  )" level="H2"/>
+                        <Title text="{i18n>itemtitle} ({item>/tableCnt})" level="H2"/>
                         <ToolbarSeparator></ToolbarSeparator>                   
                         <ToolbarSpacer></ToolbarSpacer>     
                     </Toolbar>
                 </table:extension>
                 <table:columns>
                     <!-- 자재ID -->
-                    <table:Column width="150px" hAlign="Center">
+                    <table:Column width="auto" hAlign="Center">
                         <Label text="{i18n>Material}" />
                         <table:template>
                             <HBox justifyContent="End">
@@ -93,7 +96,7 @@
                         </table:template>
                     </table:Column>          
                     <!-- 자재내역 -->
-                    <table:Column width="150px" hAlign="Center">
+                    <table:Column width="auto" hAlign="Center">
                         <Label text="{i18n>MaterialList}" />
                         <table:template>
                             <HBox justifyContent="End">
@@ -102,7 +105,7 @@
                         </table:template>
                     </table:Column> 
                     <!-- 플랜트 -->
-                    <table:Column width="150px" hAlign="Center">
+                    <table:Column width="auto" hAlign="Center">
                         <Label text="{i18n>Plant}" />
                         <table:template>
                             <HBox justifyContent="End">
@@ -111,7 +114,7 @@
                         </table:template>
                     </table:Column>          
                     <!-- 저장장소 ID -->
-                    <table:Column width="150px" hAlign="Center">
+                    <table:Column width="auto" hAlign="Center">
                         <Label text="{i18n>StorageLocation}" />
                         <table:template>
                             <HBox justifyContent="End">
@@ -120,7 +123,7 @@
                         </table:template>
                     </table:Column> 
                     <!-- 저장장소 Name -->
-                    <table:Column width="150px" hAlign="Center">
+                    <table:Column width="auto" hAlign="Center">
                         <Label text="{i18n>StorageLocationName}" />
                         <table:template>
                             <HBox justifyContent="End">
@@ -129,7 +132,7 @@
                         </table:template>
                     </table:Column> 
                     <!-- 생산오더 -->
-                    <table:Column width="150px" hAlign="Center">
+                    <table:Column width="auto" hAlign="Center">
                         <Label text="{i18n>ManufacturingOrder}" />
                         <table:template>
                             <HBox justifyContent="End">
@@ -138,7 +141,7 @@
                         </table:template>
                     </table:Column> 
                     <!-- 수량 -->
-                    <table:Column width="150px" hAlign="Center">
+                    <table:Column width="50px" hAlign="Center">
                         <Label text="{i18n>QuantityInEntryUnit}" />
                         <table:template>
                             <HBox justifyContent="End">
@@ -147,7 +150,7 @@
                         </table:template>
                     </table:Column>  
                     <!-- 단위 -->
-                    <table:Column width="150px" hAlign="Center">
+                    <table:Column width="50px" hAlign="Center">
                         <Label text="{i18n>EntryUnit}" />
                         <table:template>
                             <HBox justifyContent="End">
@@ -156,7 +159,7 @@
                         </table:template>
                     </table:Column> 
                     <!-- Batch -->
-                    <table:Column width="150px" hAlign="Center">
+                    <table:Column width="auto" hAlign="Center">
                         <Label text="{i18n>Batch}" />
                         <table:template>
                             <HBox justifyContent="End">
@@ -165,7 +168,7 @@
                         </table:template>
                     </table:Column>   
                     <!-- Serial Number -->
-                    <table:Column width="150px" hAlign="Center">
+                    <table:Column width="auto" hAlign="Center">
                         <Label text="{i18n>SerialNumber}" />
                         <table:template>
                             <HBox justifyContent="End">
