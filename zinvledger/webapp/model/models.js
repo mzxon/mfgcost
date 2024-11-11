@@ -3,8 +3,10 @@ sap.ui.define([
     "sap/ui/Device",
     "sap/ui/core/date/UI5Date",
     "sap/ui/model/odata/v2/ODataModel",
+    "sap/ui/model/Filter",
+    "sap/ui/model/FilterOperator",
 ], 
-function (JSONModel, Device, UI5Date, ODataModel) {
+function (JSONModel, Device, UI5Date, ODataModel, Filter, FilterOperator) {
     "use strict";
 
     let year = new Date().getFullYear();
@@ -47,49 +49,63 @@ function (JSONModel, Device, UI5Date, ODataModel) {
             oModel.setDefaultBindingMode("TwoWay");
             return oModel;
         },
-        
-        createoModelList: function (oModelList, oModelName, oModel, oEntitySet) {
-            oModelList[oModelName] = {
-                'oModel': oModel,
-                'oEntitySet': oEntitySet
-            };
-            
-            // oView.setModel(new JSONModel(), oModelName);
-            // return oView.getModel(oModelName);
+
+        readODataModel : function(oModelData, oEntityData, aFilter, aParameters, aSort){
+            return new Promise((resolve, reject) => {
+                var odataModel = "/sap/opu/odata/sap/" + oModelData + "/";
+                var oEntity = "/" + oEntityData;
+
+                var oModel = new ODataModel(odataModel);
+                
+                var param = {
+                    EntitySet : oEntity || "",
+                    Parameters : aParameters || null,
+                    Filter : aFilter || [],
+                    Sorter : aSort || []
+                };
+
+                oModel.read(param.EntitySet, {
+                    urlParameters: param.Parameters,
+                    filters : param.Filter,
+                    sorters : param.Sorter,
+                    success : function(oResult){
+                        resolve(oResult.results);
+                    },
+                    error: function(oError) {
+                        reject(oError);
+                        console.error(oError);
+                    }
+                })
+            })
         },
 
-        readODataModel : function(oModel, aFilter, aParameters, aSort){
-            var deferred = $.Deferred();
-            var odataModel = new ODataModel(oModel.oModel);
-
-            var param = {
-                EntitySet : oModel.oEntitySet || "",
-                Parameters : aParameters || null,
-                Filter : aFilter || [],
-                Sorter : aSort || []
-            };
-
-            odataModel.read(param.EntitySet, {
-                urlParameters: param.Parameters,
-                filters : param.Filter,
-                sorters : param.Sorter,
-                success : function(oResult){
-                    var aResult = oResult.results;
-                    deferred.resolve(aResult); 
-                },
-                error: function(oError) {
-                    deferred.reject(oError);
-                    if(oError.responseText){
-                        var oResponseTextData = JSON.parse(oError.responseText);
-                        console.log(oResponseTextData.error.message.value);
-                        console.log("오류임");
-                    }else{
-                        console.log(oError.statusText);	
-                    }
+        // 필터
+        setFilter : function(oControl, vFieldName){
+            var oFilter = null, vValue = null;
+            
+            if(oControl instanceof sap.m.MultiComboBox){
+                vValue = oControl.getSelectedKeys();
+                if(vValue.length){
+                    return vValue.map(function(item) {
+                        return new Filter(vFieldName, "EQ", item);
+                    });
                 }
-            })
-            return deferred.promise();
-        
+            }else if(oControl instanceof sap.m.MultiInput){
+                vValue = oControl.getTokens();
+                if(vValue.length){
+                    oFilter = new Filter({
+                        filters : vValue.map(function(oToken){
+                            var sCode = oToken.getKey();
+                            if(vFieldName === "SOLD_TO_PARTY"){
+                                sCode = this._conversionCode(sCode);
+                            }
+                            return new Filter(vFieldName, "EQ", sCode);
+                        }.bind(this)),
+                        and : false
+                    });
+                }
+                return oFilter;
+            }
         },
 
     };

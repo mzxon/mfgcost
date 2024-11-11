@@ -9,27 +9,27 @@
 		cancel=".onValueHelpCancelPress"
 		afterClose=".onValueHelpAfterClose"
 		supportRanges="false"
-		key="Material"
-		descriptionKey="MaterialText">
+		key="Product"
+		descriptionKey="ProductName">
 		<filterBar>
 			<fb:FilterBar advancedMode="true" search=".onVHFBMT" isRunningInValueHelpDialog="true">
 				<fb:filterGroupItems>
 					<fb:FilterGroupItem
 						groupName="FB_GROUP"
-						name="Material"
+						name="Product"
 						label="{i18n>Material}"
 						visibleInFilterBar="true">
 						<fb:control>
-							<m:Input name="Material" />
+							<m:Input name="Product" />
 						</fb:control>
 					</fb:FilterGroupItem>
 					<fb:FilterGroupItem
 						groupName="FB_GROUP"
-						name="MaterialText"
+						name="ProductName"
 						label="{i18n>MaterialText}"
 						visibleInFilterBar="true">
 						<fb:control>
-							<m:Input name="MaterialText" />
+							<m:Input name="ProductName" />
 						</fb:control>
 					</fb:FilterGroupItem>
 				</fb:filterGroupItems>

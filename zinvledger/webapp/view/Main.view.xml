@@ -91,14 +91,13 @@
                                 </fb:control>
                             </fb:FilterGroupItem>
                             <fb:FilterGroupItem 
-                                groupName="FB_GROUP" name="Material" label="{i18n>Material}" 
+                                groupName="FB_GROUP" name="Product" label="{i18n>Material}" 
                                 labelTooltip="{i18n>Material}" visibleInFilterBar="true">
                                 <fb:control>
                                     <MultiInput
                                         id="MI_MT"
                                         width="60%"
                                         valueHelpRequest=".onVHMT"
-                                        liveChange="onLiveChange"
                                         suggestionRows="{
                                             path: 'oMaterial>/'
                                         }">
@@ -119,7 +118,6 @@
                                         id="MI_GL"
                                         width="60%"
                                         valueHelpRequest=".onVHGL"
-                                        liveChange="onLiveChange"
                                         suggestionRows="{
                                             path: 'oGLAccount>/'
                                         }">
@@ -165,7 +163,7 @@
                                 </table:template>
                             </table:Column>
                             <table:Column width="100px" hAlign="Center">
-                                <Label text="{i18n>GLAccountName}" />
+                                <Label text="{i18n>GLAccountText}" />
                                 <table:template>
                                     <HBox justifyContent="Start">
                                         <Text text="{oResult>GLAccountName}" wrapping="false" />          
@@ -173,7 +171,7 @@
                                 </table:template>
                             </table:Column>
                             <table:Column width="100px" hAlign="Center">
-                                <Label text="{i18n>Product}"/>
+                                <Label text="{i18n>Material}"/>
                                 <table:template>
                                     <HBox justifyContent="Start">
                                         <Text text="{oResult>Product}" wrapping="false"/>                        
@@ -181,7 +179,7 @@
                                 </table:template>
                             </table:Column>
                             <table:Column width="200px" hAlign="Center">
-                                <Label text="{i18n>ProductName}" />
+                                <Label text="{i18n>MaterialText}" />
                                 <table:template>
                                     <HBox justifyContent="Start">
                                         <Text text="{oResult>ProductName}" wrapping="false" />         
@@ -210,9 +208,7 @@
                                         <Text text="{
                                                 parts: ['oResult>BegUnitPrice', 'oResult>CompanyCodeCurrency'], 
                                                 type:'sap.ui.model.type.Currency',
-                                                formatOptions: {
-                                                    showMeasure: false
-                                                }
+                                                formatter: '.formatCurrency'
                                             }" wrapping="false" />        
                                     </HBox>
                                 </table:template>
@@ -227,9 +223,7 @@
                                         <Text text="{
                                                 parts: ['oResult>BegAmount', 'oResult>CompanyCodeCurrency'], 
                                                 type:'sap.ui.model.type.Currency',
-                                                formatOptions: {
-                                                    showMeasure: false
-                                                }
+                                                formatter: '.formatCurrency'
                                             }" wrapping="false" />        
                                     </HBox>
                                 </table:template>
@@ -244,7 +238,7 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>PurchInQty}" wrapping="false" />        
+                                        <Text text="{= ${oResult>PurchInQty} ? ${oResult>PurchInQty} : '0'}" wrapping="false" />        
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -256,7 +250,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>PurchInPrice}" wrapping="false" />     
+                                        <Text text="{
+                                                parts: ['oResult>PurchInUnitPrice', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                        }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -268,7 +266,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>PurchInAmount}" wrapping="false" />        
+                                        <Text text="{
+                                                parts: ['oResult>PurchInAmount', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />          
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -281,7 +283,7 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Qty}" wrapping="false" />        
+                                        <Text text="{= ${oResult>ProdInQty} ? ${oResult>ProdInQty} : '0'}" wrapping="false" />        
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -293,7 +295,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Price}" wrapping="false" />     
+                                        <Text text="{
+                                                parts: ['oResult>ProdInQty', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />       
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -305,7 +311,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Amount}" wrapping="false" />        
+                                        <Text text="{
+                                                parts: ['oResult>ProdInAmount', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -318,7 +328,7 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Qty}" wrapping="false" />        
+                                        <Text text="{= ${oResult>OtherInQty} ? ${oResult>OtherInQty} : '0'}" wrapping="false" />        
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -330,7 +340,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Price}" wrapping="false" />     
+                                        <Text text="{
+                                                parts: ['oResult>OtherInUnitPrice', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -342,7 +356,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Amount}" wrapping="false" />        
+                                        <Text text="{
+                                                parts: ['oResult>OtherInAmount', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -355,7 +373,7 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Qty}" wrapping="false" />        
+                                        <Text text="{= ${oResult>TotalInQty} ? ${oResult>TotalInQty} : '0'}" wrapping="false" />        
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -367,7 +385,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Price}" wrapping="false" />     
+                                        <Text text="{
+                                                parts: ['oResult>TotalInUnitPrice', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -379,7 +401,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Amount}" wrapping="false" />        
+                                        <Text text="{
+                                                parts: ['oResult>TotalInAmount', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />       
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -393,7 +419,7 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Qty}" wrapping="false" />        
+                                        <Text text="{= ${oResult>ProdOutQty} ? ${oResult>ProdOutQty} : '0'}" wrapping="false" />        
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -405,7 +431,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Price}" wrapping="false" />     
+                                        <Text text="{
+                                                parts: ['oResult>ProdOutUnitPrice', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -417,7 +447,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Amount}" wrapping="false" />        
+                                        <Text text="{
+                                                parts: ['oResult>ProdOutAmount', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -430,7 +464,7 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Qty}" wrapping="false" />        
+                                        <Text text="{= ${oResult>SalesOutQty} ? ${oResult>SalesOutQty} : '0'}" wrapping="false" />        
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -442,7 +476,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Price}" wrapping="false" />     
+                                        <Text text="{
+                                                parts: ['oResult>SalesOutUnitPrice', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -454,7 +492,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Amount}" wrapping="false" />        
+                                        <Text text="{
+                                                parts: ['oResult>SalesOutAmount', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -467,7 +509,7 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Qty}" wrapping="false" />        
+                                        <Text text="{= ${oResult>OtherOutQty} ? ${oResult>OtherOutQty} : '0'}" wrapping="false" />        
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -479,7 +521,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Price}" wrapping="false" />     
+                                        <Text text="{
+                                                parts: ['oResult>OtherOutUnitPrice', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -491,7 +537,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Amount}" wrapping="false" />        
+                                        <Text text="{
+                                                parts: ['oResult>OtherOutAmount', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -504,7 +554,7 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Qty}" wrapping="false" />        
+                                        <Text text="{= ${oResult>OtherOut2Qty} ? ${oResult>OtherOut2Qty} : '0'}" wrapping="false" />        
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -516,7 +566,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Price}" wrapping="false" />     
+                                        <Text text="{
+                                                parts: ['oResult>OtherOut2UnitPrice', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -528,7 +582,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Amount}" wrapping="false" />        
+                                        <Text text="{
+                                                parts: ['oResult>OtherOut2Amount', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -541,7 +599,7 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Qty}" wrapping="false" />        
+                                        <Text text="{= ${oResult>TotalOutQty} ? ${oResult>TotalOutQty} : '0'}" wrapping="false" />        
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -553,7 +611,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Price}" wrapping="false" />     
+                                        <Text text="{
+                                                parts: ['oResult>TotalOutUnitPrice', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -565,7 +627,11 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>Amount}" wrapping="false" />        
+                                        <Text text="{
+                                                parts: ['oResult>TotalOutAmount', 'oResult>CompanyCodeCurrency'], 
+                                                type:'sap.ui.model.type.Currency',
+                                                formatter: '.formatCurrency'
+                                            }" wrapping="false" />  
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -577,7 +643,7 @@
                                 </table:multiLabels>
                                 <table:template>
                                     <HBox justifyContent="Start">
-                                        <Text text="{oResult>EndQty}" wrapping="false" />        
+                                        <Text text="{= ${oResult>EndQty} ? ${oResult>EndQty} : '0'}" wrapping="false" />        
                                     </HBox>
                                 </table:template>
                             </table:Column>
@@ -591,9 +657,7 @@
                                         <Text text="{
                                                 parts: ['oResult>EndUnitPrice', 'oResult>CompanyCodeCurrency'], 
                                                 type:'sap.ui.model.type.Currency',
-                                                formatOptions: {
-                                                    showMeasure: false
-                                                }
+                                                formatter: '.formatCurrency'
                                             }" wrapping="false" />        
                                     </HBox>
                                 </table:template>
@@ -608,9 +672,7 @@
                                         <Text text="{
                                                 parts: ['oResult>EndAmount', 'oResult>CompanyCodeCurrency'], 
                                                 type:'sap.ui.model.type.Currency',
-                                                formatOptions: {
-                                                    showMeasure: false
-                                                }
+                                                formatter: '.formatCurrency'
                                             }" wrapping="false" />        
                                     </HBox>  
                                 </table:template>

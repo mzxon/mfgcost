@@ -41,6 +41,13 @@
             "odataVersion": "2.0"
         }
       },
+      "YY1_GL_INVLEDGER_CDS": {
+        "uri": "/dest/sap/opu/odata/sap/YY1_GL_INVLEDGER_CDS/",
+        "type": "OData",
+        "settings": {
+            "odataVersion": "2.0"
+        }
+      },
       "ZSB_INVLEDGER_O2UI_VAN": {
         "uri": "/sap/opu/odata/IWFND/CATALOGSERVICE;v=2/Annotations(TechnicalName='ZSB_INVLEDGER_O2UI_VAN',Version='0001')/$value/",
         "type": "ODataAnnotation",

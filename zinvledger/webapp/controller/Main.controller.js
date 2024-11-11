@@ -12,7 +12,6 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
 
     var oTable;
     var oFilterBar;
-    var oModelList = [];
     var oView;
     var oResult;
     var oBegEnd;
@@ -38,65 +37,133 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
             // Table Model
             this.getView().setModel(Model.createTableModel(), 'TBL_Model');
 
-            // 테이블 바인딩
-            // this._bindTable();
-
+            oBegEnd = new JSONModel();
+            oInOut = new JSONModel();
+            oMType = new JSONModel();
         
         },
 
-        onSearch: function () {
-            var that = this;
+        async onSearch() {
+            try {
+                var vFrom = this.byId("FromDate").getValue().replace("-", ""),
+                    oFromYear = vFrom.substring(0,4);
+                    oFromMonth = vFrom.substring(4, 6);
+                var vTo = this.byId("ToDate").getValue().replace("-", ""),
+                    oToYear = vTo.substring(0,4);
+                    oToMonth = vTo.substring(4, 6);
 
-            // 필터
-            var vFrom = this.byId("FromDate").getValue().replace("-", "");
-            oFromMonth = vFrom.substring(4, 6);
-            var vTo = this.byId("ToDate").getValue().replace("-", "");
-            oToMonth = vTo.substring(4, 6);
+                // 기초기말 필터
+                var be_f = [
+                    new Filter("SourceLedger", "EQ", "0L"),
+                    new Filter("FiscalYear", "BT", oFromYear, oToYear),
+                    new Filter("FiscalPeriod", "LE", oToMonth),
+                    new Filter("GLAccount", "NE", '13200000')
+                ];
 
-            // 기초, 기말
-            oBegEnd = new JSONModel();
-            Model.createoModelList( oModelList, "oBegEnd", "/sap/opu/odata/sap/ZSB_INVLEDGER_O2UI/", "/INVLEDGER");
-            
-            var be_f = [
-                new Filter("SourceLedger", "EQ", "0L"),
-                new Filter("CompanyCode", "EQ", "1000"),
-                new Filter("FiscalYear", "GE", "2024"),
-                new Filter("FiscalPeriod", "LE", oToMonth)
-            ];
-            var be_p = {
-                $select: "GLAccount, GLAccountName, Product, ProductName, Quantity, AmountInCompanyCodeCurrency, PostingDate, FiscalYear, FiscalPeriod",
-                $top: "500000"
-            };
-            var be_s = [
-                new Sorter("GLAccount"),
-                new Sorter("Product")
-            ];
-            $.when(
-                Model.readODataModel(oModelList["oBegEnd"], be_f, be_p, be_s)
-            ).done(function(results){
-                oBegEnd = results;
-                that._sumBeg();
+                // 입출고 필터
+                var io_f = [
+                    new Filter("SourceLedger", "EQ", "0L"),
+                    new Filter("FiscalYear", "BT", oFromYear, oToYear),
+                    new Filter("FiscalPeriod", "LE", oToMonth)
+                ];
 
-                // 입출고
-                that._getInOut();
+                var iFilterBar = oView.byId("FB_V"),
+                aFilterItems = iFilterBar.getFilterGroupItems();
                 
-            })
+                aFilterItems.forEach(function(item){
+                    var vFieldName = item.getName(),
+                        oControl = item.getControl(),
+                        oFilter = Model.setFilter(oControl, vFieldName);
+                    if(oFilter){
+                        if (Array.isArray(oFilter)) {
+                            oFilter.forEach(function(filterItem) {
+                                if (filterItem.sPath === "Plant") {
+                                    be_f.push(filterItem); 
+                                    return;
+                                }
+                                be_f.push(filterItem);
+                                io_f.push(filterItem);
+                            });
+                        } else {
+                            oFilter.aFilters.forEach(function(filterItem) {
+                                be_f.push(filterItem);
+
+                                if (filterItem.sPath === "Product") {
+                                    let modifilter = new Filter("Material", "EQ", filterItem.oValue1, filterItem.oValue2);
+                                    io_f.push(modifilter);
+                                } else {
+                                    io_f.push(filterItem);
+                                }
+                            });
+                        }      
+                    }
+                });
+
+                console.log(be_f);
+                console.log(io_f);
+
+                /*
+                / 기초기말 get
+                */
+                var be_p = {
+                    $select: "GLAccount, GLAccountName, AccountingDocument, Product, ProductName, Quantity, AmountInCompanyCodeCurrency, PostingDate, FiscalYear, FiscalPeriod",
+                    $top: "500000"
+                };
+                var be_s = [
+                    new Sorter("GLAccount"),
+                    new Sorter("Product")
+                ];
+                oBegEnd = await Model.readODataModel("ZSB_INVLEDGER_O2UI", "INVLEDGER", be_f, be_p, be_s);
+
+                // 기초기말 + 입출고 합산
+                this._sumBeg();
+
+                /*
+                /// 입출고 get
+                */
+                var io_p = {
+                    $select: "GLAccount, Material, InventoryQty, BaseUnit, AmountInCompanyCodeCurrency, CompanyCodeCurrency, FiscalYear, FiscalPeriod, MaterialLedgerProcessType",
+                    $top: "500000"
+                };
+                var io_s = [
+                    new Sorter("GLAccount"),
+                    new Sorter("Material")
+                ];
+                oInOut = await Model.readODataModel("YY1_MATERIAL_LEDGER_CDS", "YY1_MATERIAL_LEDGER", io_f, io_p, io_s)
+                
+                /*
+                /// 입출고타입 get
+                */
+                var mt_p = {
+                    $select: "Materialledgerprocesstype, Materialledgercategory",
+                    $top: "500000"
+                };
+                oMType = await Model.readODataModel("YY1_MATERIALTYPE_INVLEDGER_CDS", "YY1_MATERIALTYPE_INVLEDGER", null, mt_p, null);
+
+                // 총 합산
+                this._sumInOut();
+            
+            } catch (error) {
+                console.log("error:", error);
+            }
         },
 
+        // 기초기말 합산
         _sumBeg: function() {
+            oTable.setBusy(true);
+
             oSumGroup = [];
             
             oBegEnd.forEach(row => {
-                // 조회를 위한 ID
                 var itemId = row.GLAccount + "/" + row.Product;
                 var vItem = oSumGroup.find(item => item.id === itemId);
 
-                // 조회 Item
                 if (!vItem) {
                     vItem = {
                         id: itemId,
                         GLAccount: row.GLAccount,
                         GLAccountName: row.GLAccountName,
+                        AccountingDocument: row.AccountingDocument,
                         Product: row.Product,
                         ProductName: row.ProductName,
                         FiscalYear: row.FiscalYear,
@@ -112,380 +179,256 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
                     oSumGroup.push(vItem);
                 }
 
-                // 기초, 기말 합산
-                if (row.FiscalPeriod == '0' && row.FiscalPeriod <= oFromMonth - 1) {
-                    // console.log("check Quantity", row.Quantity);
-                    // console.log("check AmountInCompanyCodeCurrency", row.AmountInCompanyCodeCurrency);
-                    // console.log("check BegUnitPrice", Math.round((row.AmountInCompanyCodeCurrency/row.Quantity) * 1000) / 1000);
+                if (row.FiscalPeriod >= '0' && row.FiscalPeriod <= Number(oFromMonth - 1)) {
                     vItem.BegQty += parseInt(row.Quantity);
                     vItem.BegAmount += parseInt(row.AmountInCompanyCodeCurrency);
-                    vItem.BegUnitPrice += Math.round((row.AmountInCompanyCodeCurrency/row.Quantity) * 1000) / 1000;
-                } else if (row.FiscalPeriod >= '0' && row.FiscalPeriod <= oToMonth) {
+                    // vItem.BegUnitPrice += Math.round((row.AmountInCompanyCodeCurrency/Math.abs(row.Quantity)) * 1000) / 1000;
+                }
+                if (row.FiscalPeriod >= '0' && row.FiscalPeriod <= Number(oToMonth)) {
                     vItem.EndQty += parseInt(row.Quantity);
                     vItem.EndAmount += parseInt(row.AmountInCompanyCodeCurrency);
-                    vItem.EndUnitPrice += Math.round((row.AmountInCompanyCodeCurrency/row.Quantity) * 1000) / 1000;
+                    // vItem.EndUnitPrice += Math.round((row.AmountInCompanyCodeCurrency/Math.abs(row.Quantity)) * 1000) / 1000;
                 }
-                
+
             })
-            oResult.setProperty("/", oSumGroup);
+            // oResult.setProperty("/", oSumGroup);
            
         },
 
-        _getInOut: function () {
-            var that = this;
-            
-            oInOut = new JSONModel();
-            Model.createoModelList(oModelList, "oInOut", "/sap/opu/odata/sap/YY1_MATERIAL_LEDGER_CDS/", "/YY1_MATERIAL_LEDGER");
-                
-            var be_f = [
-                new Filter("SourceLedger", "EQ", "0L"),
-                new Filter("CompanyCode", "EQ", "1000"),
-                new Filter("FiscalYear", "GE", "2024"),
-                new Filter("FiscalPeriod", "LE", oToMonth)
-            ];
-            var be_p = {
-                $select: "GLAccount, Material, InventoryQty, BaseUnit, AmountInCompanyCodeCurrency, CompanyCodeCurrency, FiscalYear, FiscalPeriod, MaterialLedgerProcessType",
-                $top: "500000"
-            };
-            var be_s = [
-                new Sorter("GLAccount"),
-                new Sorter("Material")
-            ];
-            $.when(
-                Model.readODataModel(oModelList["oInOut"], be_f, be_p, be_s)
-            ).done(function(results){
-                oInOut = results;
-
-                // 입출고 타입 get
-                that._getProcessType();
-                
-            })
-
-        },
-
-        _getProcessType: function () {
-            var that = this;
-
-            oMType = new JSONModel();
-            Model.createoModelList(oModelList, "oMType", "/sap/opu/odata/sap/YY1_MATERIALTYPE_INVLEDGER_CDS/", "/YY1_MATERIALTYPE_INVLEDGER");
-                    
-            var be_p = {
-                $select: "Materialledgerprocesstype, Materialledgercategory",
-                $top: "500000"
-            };
-            $.when(
-                Model.readODataModel(oModelList["oMType"], null, be_p, null)
-            ).done(function(results){
-                oMType = results;
-
-                // 입출고 합산
-                that._sumInOut();
-
-            })
-
-        },
-
+        // 총 합산
         _sumInOut: function () {
-            console.log("check InOut:", oInOut);
-            console.log("check oMType:", oMType);
+            var that = this;
             
             oInOut.forEach(data => {
                 var dataId = data.GLAccount + "/" + data.Material;
                 var vItem = oSumGroup.find(item => item.id === dataId);
 
-                console.log(vItem);
-                
+                if (vItem) {         
+                    var vCheckType = data.MaterialLedgerProcessType;
+                    
+                    // 합산
+                    const mergeItem = (qtyKey, amountKey, unitPriceKey) => {
+                        vItem[qtyKey] = (vItem[qtyKey] || 0) + parseInt(data.InventoryQty);
+                        vItem[amountKey] = (vItem[amountKey] || 0) + parseInt(data.AmountInCompanyCodeCurrency);
+                        // vItem[unitPriceKey] = Math.round((data.AmountInCompanyCodeCurrency / data.InventoryQty) * 1000) / 1000;
+                    };
 
+                    // 입출고 타입에 따른 변수 네이밍
+                    const processTypes = {
+                        '2100': ['PurchInQty', 'PurchInAmount', 'PurchInUnitPrice'],
+                        '2200': ['ProdInQty', 'ProdInAmount', 'ProdInUnitPrice'],
+                        '2900': ['OtherInQty', 'OtherInAmount', 'OtherInUnitPrice'],
+                        '3100': ['ProdOutQty', 'ProdOutAmount', 'ProdOutUnitPrice'],
+                        '3200': ['SalesOutQty', 'SalesOutAmount', 'SalesOutUnitPrice'],
+                        '3900': ['OtherOutQty', 'OtherOutAmount', 'OtherOutUnitPrice']
+                    };
+
+                    // 타입에 따라 process 가져와서 합산
+                    Object.keys(processTypes).forEach(mt => {
+                        if (that._getProcessType(mt).includes(vCheckType)) {
+                            const [qtyKey, amountKey, unitPriceKey] = processTypes[mt];
+                            mergeItem(qtyKey, amountKey, unitPriceKey);
+                        }
+                    });
+
+                    // 합계
+                    vItem.TotalInQty = (vItem.PurchInQty || 0) + (vItem.ProdInQty || 0) + (vItem.OtherInQty || 0);
+                    vItem.TotalInAmount = (vItem.PurchInAmount || 0) + (vItem.ProdInAmount || 0) + (vItem.OtherInAmount || 0);
+                    
+                    vItem.TotalOutQty = (vItem.ProdOutQty || 0) + (vItem.SalesOutQty || 0) + (vItem.OtherOutQty || 0);
+                    vItem.TotalOutAmount = (vItem.ProdOutAmount || 0) + (vItem.SalesOutAmount || 0) + (vItem.OtherOutAmount || 0);
+                    
+                    var vOtherOut2Qty = vItem.BegQty + vItem.TotalInQty - Math.abs(vItem.TotalOutQty) - Math.abs(vItem.EndQty);
+                    var vOtherOut2Amount = vItem.BegAmount + vItem.TotalInAmount - vItem.TotalOutAmount - vItem.EndAmount;
+                    // var vOtherOut2UnitPrice = Math.round((vOtherOut2Amount / Math.abs(vOtherOut2Qty)) * 1000) / 1000 || 0;
+                    
+                    vItem.OtherOut2Qty = vOtherOut2Qty;
+                    vItem.OtherOut2Amount = vOtherOut2Amount;
+                    // vItem.OtherOut2UnitPrice = vOtherOut2UnitPrice;
+                    
+                }
             })
-
-
-
-
-            // oBegEnd.forEach(row => {
-            //     // 조회를 위한 ID
-            //     var itemId = row.GLAccount + "/" + row.Product;
-            //     var vItem = oSumGroup.find(item => item.id === itemId);
-
-            //     // 조회 Item
-            //     if (!vItem) {
-            //         vItem = {
-            //             id: itemId,
-            //             GLAccount: row.GLAccount,
-            //             GLAccountName: row.GLAccountName,
-            //             Product: row.Product,
-            //             ProductName: row.ProductName,
-            //             FiscalYear: row.FiscalYear,
-            //             FiscalPeriod: row.FiscalPeriod,
-            //             CompanyCodeCurrency: 'KRW',
-            //             BegQty: 0,
-            //             BegUnitPrice: 0,
-            //             BegAmount: 0,
-            //             EndQty: 0,
-            //             EndUnitPrice: 0,
-            //             EndAmount: 0
-            //         };
-            //         oSumGroup.push(vItem);
-            //     }
             
-            // const typeNameMapping = {
-            //     "2100": "PurchIn",  
-            //     "2200": "ProdIn", 
-            //     "2900": "OtherIn",
-            //     "3100": "ProdOut",
-            //     "3200": "SalesOut",  
-            //     "3900": "OtherOut"
-            // };
+            this._getUnitPrice();
 
-            // oMType.forEach(mItem => {
-            //     var { Materialledgercategory, Materialledgerprocesstype} = mItem;
-            //     console.log("check Materialledgercategory", Materialledgercategory);
+            // oResult.setProperty("/", oSumGroup);
+            // oTable.setBusy(false);
 
-            //     var vProcessType = oInOut.filter(ioItem => ioItem.MaterialLedgerProcessType === Materialledgercategory);
+        },
 
-            //     console.log("check vProcessType:", vProcessType);
-            //     // console.log("check sum:", sum_amount);
+        _getProcessType: function (type) {
+            switch (type) {
+                case '2100':
+                case '2200':
+                case '2900':
+                case '3100':
+                case '3200':
+                case '3900':
+                    return oMType.filter(item => item.Materialledgerprocesstype === type)
+                    .map(item => item.Materialledgercategory);
 
-            //     var sum_qty = vProcessType.reduce((sum, ioItem) => sum + parseInt(ioItem.InventoryQty), 0);
-            //     var sum_amount = vProcessType.reduce((sum, ioItem) => sum + parseInt(ioItem.AmountInCompanyCodeCurrency), 0);
-            //     var unitprice = sum_qty > 0 ? sum_amount / sum_qty : 0;
-                
-            //     console.log("check sum_qty:", sum_qty);
-            //     console.log("check sum_amount:", sum_amount);
-            //     console.log("check unitprice:", unitprice);
+                default:
+                    break;
+            }
+        },
 
+        _getUnitPrice : function () {
+          
+            // oTable.setBusy(false);
+            oSumGroup.forEach(data => {
+                // 기초기말
+                data.BegUnitPrice = Math.round((Math.abs(data.BegAmount) / Math.abs(data.BegQty)) * 1000) / 1000 || 0;
+                data.EndUnitPrice = Math.round((Math.abs(data.EndAmount) / Math.abs(data.EndQty)) * 1000) / 1000 || 0;
+                // 입고
+                data.PurchInUnitPrice = Math.round((Math.abs(data.PurchInAmount) / Math.abs(data.PurchInQty)) * 1000) / 1000 || 0;
+                data.ProdInUnitPrice = Math.round((Math.abs(data.ProdInAmount) / Math.abs(data.ProdInQty)) * 1000) / 1000 || 0;
+                data.OtherInUnitPrice = Math.round((Math.abs(data.OtherInAmount) / Math.abs(data.OtherInQty)) * 1000) / 1000 || 0;
+                data.TotalInUnitPrice = Math.round((Math.abs(data.TotalInAmount) / Math.abs(data.TotalInQty)) * 1000) / 1000 || 0;
+                // 출고
+                data.ProdOutUnitPrice = Math.round((Math.abs(data.ProdOutAmount) / Math.abs(data.ProdOutQty)) * 1000) / 1000 || 0;
+                data.SalesOutUnitPrice = Math.round((Math.abs(data.SalesOutAmount) / Math.abs(data.SalesOutQty)) * 1000) / 1000 || 0;
+                data.OtherOutUnitPrice = Math.round((Math.abs(data.OtherOutAmount) / Math.abs(data.OtherOutQty)) * 1000) / 1000 || 0;
+                data.OtherOut2UnitPrice = Math.round((Math.abs(data.OtherOut2Qty) / Math.abs(data.OtherOut2Amount)) * 1000) / 1000 || 0;
+                data.TotalOutUnitPrice = Math.round((Math.abs(data.TotalOutAmount) / Math.abs(data.TotalOutQty)) * 1000) / 1000 || 0;
 
-
-
-
-
-
-
-
-
-
-
-            // })
-
-            // oMType.forEach(type => {
-            //     switch (type.Materialledgerprocesstype) {
-            //         case "2100":
-            //             console.log("here 2100");
-
-            //             oInOut.forEach(data => {
-
-            //             })
-
-
-            //             break;
-            //         case "2200":
-                    
-            //         break;
-            //         case "2900": 
-                        
-            //             break;
-            //         case "3100": 
-                    
-            //             break;
-            //         case "3200": 
-                        
-            //             break;
-            //         case "3900": 
-                    
-            //             break;
-            //         default:
-            //             break;
-            //     }
-            // })
-
-            // oSumGroup.forEach(row => {
-
-            //     oInOut.forEach(data => {
-            //         var itemId = data.GLAccount + "/" + data.Material;
-            //         console.log("check inoutId", itemId);
-            //         if(row.id == itemId) {
-
-            //             oMType.forEach(type => {
-            //                 switch (type.Materialledgerprocesstype) {
-            //                     case "2100":
-            //                         console.log("here 2100");
-            //                         console.log("check oSumGroup:", row);
-            //                         console.log("check oInOut:", data);
-            //                         console.log(data.MaterialLedgerProcessType);
-            //                         break;
-            //                     case "2200":
-                                
-            //                     break;
-            //                     case "2900": 
-                                    
-            //                         break;
-            //                     case "3100": 
-                                
-            //                         break;
-            //                     case "3200": 
-                                    
-            //                         break;
-            //                     case "3900": 
-                                
-            //                         break;
-            //                     default:
-            //                         break;
-            //                 }
-            //             })
+            });
             
-
-
-            //             // data.Price2 = 0;
-            //             // console.log(data);
-
-            //         }
-            //     })
-
-
-
-
-
-
-
-                // 조회를 위한 ID
-                // var itemId = row.GLAccount + "/" + row.Product;
-                // var vItem = aGroup.find(item => item.id === itemId);
-
-                // // 조회 Item
-                // if (!vItem) {
-                //     vItem = {
-                //         id: itemId,
-                //         GLAccount: row.GLAccount,
-                //         GLAccountName: row.GLAccountName,
-                //         Product: row.Product,
-                //         ProductName: row.ProductName,
-                //         FiscalYear: row.FiscalYear,
-                //         FiscalPeriod: row.FiscalPeriod,
-                //         CompanyCodeCurrency: 'KRW',
-                //         BegQty: 0,
-                //         BegUnitPrice: 0,
-                //         BegAmount: 0,
-                //         EndQty: 0,
-                //         EndUnitPrice: 0,
-                //         EndAmount: 0
-                //     };
-                //     aGroup.push(vItem);
-                // }
-
-                // if (row.FiscalPeriod == '0' && row.FiscalPeriod <= oFromMonth - 1) {
-                //     vItem.BegQty += parseInt(row.Quantity);
-                //     vItem.BegAmount += parseInt(row.AmountInCompanyCodeCurrency);
-                //     vItem.BegUnitPrice += Math.round((row.AmountInCompanyCodeCurrency/row.Quantity) * 1000) / 1000;
-                // } else if (row.FiscalPeriod >= '0' && row.FiscalPeriod <= oToMonth) {
-                //     vItem.EndQty += parseInt(row.Quantity);
-                //     vItem.EndUnitPrice += parseInt(row.AmountInCompanyCodeCurrency);
-                //     vItem.EndAmount += Math.round((row.AmountInCompanyCodeCurrency/row.Quantity) * 1000) / 1000;
-                // }
-                
-            
-            
-            // console.log("check aGroup:", aGroup);
-            // oBegEnd.setProperty("/", aGroup);
+            oResult.setProperty("/", oSumGroup);
+            oTable.setBusy(false);
 
         },
 
         //VH Material
-        onVHMT: function() {
-           
-            var oMultiInput = this.byId("MI_MT");
-            this._oMultiInput = oMultiInput;
+        async onVHMT() {
+            try {
+                oView.setModel(new JSONModel(), "oMaterial");
+                var vVHMT = oView.getModel("oMaterial");
 
-            this._oBasicSearchField = new SearchField();
-            this.loadFragment({
-                name: "zinvledger/fragment/Material",
-            }).then(function(oDialog) {
-                var oFilterBar = oDialog.getFilterBar();
-                this._oVHD = oDialog;
+                var mt_p = {
+                    $top: "500000"
+                };
+                var mt_s = [
+                    new Sorter("Product")
+                ];
+                var data  = await Model.readODataModel("ZSB_INVLEDGER_O2UI", "VH_Product", null, mt_p, mt_s);
+                
+                vVHMT.setProperty("/", data);
 
-                this.getView().addDependent(oDialog);
-                var oVHModel = this.getView().getModel("oMaterial");
+                var oMultiInput = this.byId("MI_MT");
+                this._oMultiInput = oMultiInput;
 
-                oFilterBar.setFilterBarExpanded(false);
-                oFilterBar.setBasicSearch(this._oBasicSearchField);
+                this._oBasicSearchField = new SearchField();
+                this.loadFragment({
+                    name: "zinvledger/fragment/Material",
+                }).then(function(oDialog) {
+                    var oFilterBar = oDialog.getFilterBar();
+                    this._oVHD = oDialog;
 
-                // Trigger filter bar search when the basic search is fired
-                this._oBasicSearchField.attachSearch(function() {
-                    oFilterBar.search();
-                });
+                    this.getView().addDependent(oDialog);
 
-                oDialog.getTableAsync().then(function (oTable) {
+                    oFilterBar.setFilterBarExpanded(false);
+                    oFilterBar.setBasicSearch(this._oBasicSearchField);
 
-                    oTable.setModel(oVHModel);
+                    // Trigger filter bar search when the basic search is fired
+                    this._oBasicSearchField.attachSearch(function() {
+                        oFilterBar.search();
+                    });
 
-                    // For Desktop and tabled the default table is sap.ui.table.Table
-                    if (oTable.bindRows) {
-                        // Bind rows to the ODataModel and add columns
-                        oTable.bindAggregation("rows", {
-                            path: "/",
-                            events: {
-                                dataReceived: function() {
-                                    oDialog.update();
+                    oDialog.getTableAsync().then(function (oTable) {
+
+                        oTable.setModel(vVHMT);
+
+                        // For Desktop and tabled the default table is sap.ui.table.Table
+                        if (oTable.bindRows) {
+                            // Bind rows to the ODataModel and add columns
+                            oTable.bindAggregation("rows", {
+                                path: "/",
+                                events: {
+                                    dataReceived: function() {
+                                        oDialog.update();
+                                    }
                                 }
-                            }
-                        });
-              
-                         oTable.addColumn(new sap.ui.table.Column({label: new sap.m.Label({text: "{i18n>Material}"}), template: new sap.m.Text({wrapping: false, text: "{GLAccount}"})}));
-                         oTable.addColumn(new sap.ui.table.Column({label: new sap.m.Label({text: "{i18n>MaterialText}"}), template: new sap.m.Text({wrapping: false, text: "{GLAccountName}"})}));
-                    }
-                }.bind(this));           
+                            });
+                
+                            oTable.addColumn(new sap.ui.table.Column({label: new sap.m.Label({text: "{i18n>Material}"}), template: new sap.m.Text({wrapping: false, text: "{Product}"})}));
+                            oTable.addColumn(new sap.ui.table.Column({label: new sap.m.Label({text: "{i18n>MaterialText}"}), template: new sap.m.Text({wrapping: false, text: "{ProductName}"})}));
+                        }
+                    }.bind(this));           
 
-                oDialog.setTokens(this._oMultiInput.getTokens()); 
-                oDialog.open();
-            }.bind(this));
+                    oDialog.setTokens(this._oMultiInput.getTokens()); 
+                    oDialog.open();
+                }.bind(this));  
+            } catch (error) {
+                console.log("error:", error);
+            }
+            
         },
 
         //VH GLAccount
-        onVHGL: function() {
-           
-            var oMultiInput = this.byId("MI_GL");
-            this._oMultiInput = oMultiInput;
+        async onVHGL() {
+            try {
+                oView.setModel(new JSONModel(), "oGLAccount");
+                var vVHGL = oView.getModel("oGLAccount");
 
-            this._oBasicSearchField = new SearchField();
-            this.loadFragment({
-                name: "zinvledger/fragment/GLAccount",
-            }).then(function(oDialog) {
-                var oFilterBar = oDialog.getFilterBar();
-                this._oVHD = oDialog;
+                var gl_p = {
+                    $top: "500000"
+                };
+                var gl_s = [
+                    new Sorter("GlAccount")
+                ];
+                var data  = await Model.readODataModel("YY1_GL_INVLEDGER_CDS", "YY1_GL_INVLEDGER", null, gl_p, gl_s);
+                
+                vVHGL.setProperty("/", data);
 
-                this.getView().addDependent(oDialog);
-                var oVHModel = this.getView().getModel("oGLAccount");
+                var oMultiInput = this.byId("MI_GL");
+                this._oMultiInput = oMultiInput;
 
-                oFilterBar.setFilterBarExpanded(false);
-                oFilterBar.setBasicSearch(this._oBasicSearchField);
+                this._oBasicSearchField = new SearchField();
+                this.loadFragment({
+                    name: "zinvledger/fragment/GLAccount",
+                }).then(function(oDialog) {
+                    var oFilterBar = oDialog.getFilterBar();
+                    this._oVHD = oDialog;
 
-                // Trigger filter bar search when the basic search is fired
-                this._oBasicSearchField.attachSearch(function() {
-                    oFilterBar.search();
-                });
+                    this.getView().addDependent(oDialog);
 
-                oDialog.getTableAsync().then(function (oTable) {
+                    oFilterBar.setFilterBarExpanded(false);
+                    oFilterBar.setBasicSearch(this._oBasicSearchField);
 
-                    oTable.setModel(oVHModel);
+                    // Trigger filter bar search when the basic search is fired
+                    this._oBasicSearchField.attachSearch(function() {
+                        oFilterBar.search();
+                    });
 
-                    // For Desktop and tabled the default table is sap.ui.table.Table
-                    if (oTable.bindRows) {
-                        // Bind rows to the ODataModel and add columns
-                        oTable.bindAggregation("rows", {
-                            path: "/",
-                            events: {
-                                dataReceived: function() {
-                                    oDialog.update();
+                    oDialog.getTableAsync().then(function (oTable) {
+
+                        oTable.setModel(vVHGL);
+
+                        // For Desktop and tabled the default table is sap.ui.table.Table
+                        if (oTable.bindRows) {
+                            // Bind rows to the ODataModel and add columns
+                            oTable.bindAggregation("rows", {
+                                path: "/",
+                                events: {
+                                    dataReceived: function() {
+                                        oDialog.update();
+                                    }
                                 }
-                            }
-                        });
-              
-                         oTable.addColumn(new sap.ui.table.Column({label: new sap.m.Label({text: "{i18n>GLAccount}"}), template: new sap.m.Text({wrapping: false, text: "{GLAccount}"})}));
-                         oTable.addColumn(new sap.ui.table.Column({label: new sap.m.Label({text: "{i18n>GLAccountText}"}), template: new sap.m.Text({wrapping: false, text: "{GLAccountName}"})}));
-                    }
-                }.bind(this));           
+                            });
+                
+                            oTable.addColumn(new sap.ui.table.Column({label: new sap.m.Label({text: "{i18n>Materialvaluationclass}"}), template: new sap.m.Text({wrapping: false, text: "{Materialvaluationclass}"})}));
+                            oTable.addColumn(new sap.ui.table.Column({label: new sap.m.Label({text: "{i18n>GLAccount}"}), template: new sap.m.Text({wrapping: false, text: "{GlAccount}"})}));
+                            oTable.addColumn(new sap.ui.table.Column({label: new sap.m.Label({text: "{i18n>GLAccountText}"}), template: new sap.m.Text({wrapping: false, text: "{GLAccountName}"})}));
+                        }
+                    }.bind(this));           
 
-                oDialog.setTokens(this._oMultiInput.getTokens()); 
-                oDialog.open();
-            }.bind(this));
+                    oDialog.setTokens(this._oMultiInput.getTokens()); 
+                    oDialog.open();
+                }.bind(this));    
+            } catch (error) {
+                console.log("error:", error);
+            }
+            
         },
 
         onValueHelpOkPress: function (oEvent) {
@@ -520,8 +463,8 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
 
             aFilters.push(new Filter({
                 filters: [
-                    new Filter({ path: "Material", operator: FilterOperator.Contains, value1: sSearchQueGLry }),
-                    new Filter({ path: "MaterialText", operator: FilterOperator.Contains, value1: sSearchQueGLry })
+                    new Filter({ path: "Product", operator: FilterOperator.Contains, value1: sSearchQueGLry }),
+                    new Filter({ path: "ProductName", operator: FilterOperator.Contains, value1: sSearchQueGLry })
                 ],
                 and: false
             }));
@@ -550,8 +493,9 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
 
             aFilters.push(new Filter({
                 filters: [
-                    new Filter({ path: "GLAccount", operator: FilterOperator.Contains, value1: sSearchQueGLry }),
-                    new Filter({ path: "GLAccountText", operator: FilterOperator.Contains, value1: sSearchQueGLry })
+                    new Filter({ path: "Materialvaluationclass", operator: FilterOperator.Contains, value1: sSearchQueGLry }),
+                    new Filter({ path: "GlAccount", operator: FilterOperator.Contains, value1: sSearchQueGLry }),
+                    new Filter({ path: "GLAccountName", operator: FilterOperator.Contains, value1: sSearchQueGLry })
                 ],
                 and: false
             }));
@@ -618,17 +562,18 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
             })
         },
 
-        formatterCurrency : function(amount, currency){
-
-            if(amount != null && currency != null){
+        formatCurrency: function (price, currency) {
+            if(price != null && currency != null){
 
                 var vCurrencyFormat = sap.ui.core.format.NumberFormat.getCurrencyInstance({
                     currencyCode: true,
                     showMeasure : false
                 });
 
-                return vCurrencyFormat.format(amount, currency);
+                return vCurrencyFormat.format(price, currency);
+            } else {
+                return 0;
             }
-        },
+        }
     });
 });

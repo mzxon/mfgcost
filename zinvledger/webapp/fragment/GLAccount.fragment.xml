@@ -9,11 +9,20 @@
 		cancel=".onValueHelpCancelPress"
 		afterClose=".onValueHelpAfterClose"
 		supportRanges="false"
-		key="GLAccount"
+		key="GlAccount"
 		descriptionKey="GLAccountText">
 		<filterBar>
 			<fb:FilterBar advancedMode="true" search=".onVHFBGL" isRunningInValueHelpDialog="true">
 				<fb:filterGroupItems>
+					<fb:FilterGroupItem
+						groupName="FB_GROUP"
+						name="Materialvaluationclass"
+						label="{i18n>Materialvaluationclass}"
+						visibleInFilterBar="true">
+						<fb:control>
+							<m:Input name="Materialvaluationclass" />
+						</fb:control>
+					</fb:FilterGroupItem>
 					<fb:FilterGroupItem
 						groupName="FB_GROUP"
 						name="GLAccount"
