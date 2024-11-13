@@ -14,6 +14,7 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
     var oFilterBar;
     var oView;
     var oResult;
+    var oMvGl;
     var oBegEnd;
     var oInOut;
     var oMType;
@@ -36,7 +37,8 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
 
             // Table Model
             this.getView().setModel(Model.createTableModel(), 'TBL_Model');
-
+            
+            oMvGl = new JSONModel();
             oBegEnd = new JSONModel();
             oInOut = new JSONModel();
             oMType = new JSONModel();
@@ -52,19 +54,23 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
                     oToYear = vTo.substring(0,4);
                     oToMonth = vTo.substring(4, 6);
 
+                /*********************************************************
+                / 평가클래스(GL) get
+                **********************************************************/
+
+                oMvGl = await Model.readODataModel("YY1_GL_INVLEDGER_CDS", "YY1_GL_INVLEDGER", null, null, null);
+                
                 // 기초기말 필터
                 var be_f = [
-                    new Filter("SourceLedger", "EQ", "0L"),
                     new Filter("FiscalYear", "BT", oFromYear, oToYear),
-                    new Filter("FiscalPeriod", "LE", oToMonth),
-                    new Filter("GLAccount", "NE", '13200000')
+                    new Filter("FiscalPeriod", "LE", oToMonth)
                 ];
 
                 // 입출고 필터
                 var io_f = [
-                    new Filter("SourceLedger", "EQ", "0L"),
                     new Filter("FiscalYear", "BT", oFromYear, oToYear),
-                    new Filter("FiscalPeriod", "LE", oToMonth)
+                    new Filter("FiscalPeriod", "LE", oToMonth),
+                    new Filter("Language", "EQ", '3')
                 ];
 
                 var iFilterBar = oView.byId("FB_V"),
@@ -73,7 +79,7 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
                 aFilterItems.forEach(function(item){
                     var vFieldName = item.getName(),
                         oControl = item.getControl(),
-                        oFilter = Model.setFilter(oControl, vFieldName);
+                        oFilter = Model.setFilter(oControl, vFieldName, oMvGl);
                     if(oFilter){
                         if (Array.isArray(oFilter)) {
                             oFilter.forEach(function(filterItem) {
@@ -99,12 +105,9 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
                     }
                 });
 
-                console.log(be_f);
-                console.log(io_f);
-
-                /*
+                /*********************************************************
                 / 기초기말 get
-                */
+                **********************************************************/
                 var be_p = {
                     $select: "GLAccount, GLAccountName, AccountingDocument, Product, ProductName, Quantity, AmountInCompanyCodeCurrency, PostingDate, FiscalYear, FiscalPeriod",
                     $top: "500000"
@@ -118,9 +121,9 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
                 // 기초기말 + 입출고 합산
                 this._sumBeg();
 
-                /*
-                /// 입출고 get
-                */
+                /*********************************************************
+                / 입출고 get
+                **********************************************************/
                 var io_p = {
                     $select: "GLAccount, Material, InventoryQty, BaseUnit, AmountInCompanyCodeCurrency, CompanyCodeCurrency, FiscalYear, FiscalPeriod, MaterialLedgerProcessType",
                     $top: "500000"
@@ -131,9 +134,9 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
                 ];
                 oInOut = await Model.readODataModel("YY1_MATERIAL_LEDGER_CDS", "YY1_MATERIAL_LEDGER", io_f, io_p, io_s)
                 
-                /*
-                /// 입출고타입 get
-                */
+                /**********************************************************
+                / 입출고타입 get
+                **********************************************************/
                 var mt_p = {
                     $select: "Materialledgerprocesstype, Materialledgercategory",
                     $top: "500000"
@@ -157,7 +160,7 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
             oBegEnd.forEach(row => {
                 var itemId = row.GLAccount + "/" + row.Product;
                 var vItem = oSumGroup.find(item => item.id === itemId);
-
+                
                 if (!vItem) {
                     vItem = {
                         id: itemId,
@@ -182,16 +185,14 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
                 if (row.FiscalPeriod >= '0' && row.FiscalPeriod <= Number(oFromMonth - 1)) {
                     vItem.BegQty += parseInt(row.Quantity);
                     vItem.BegAmount += parseInt(row.AmountInCompanyCodeCurrency);
-                    // vItem.BegUnitPrice += Math.round((row.AmountInCompanyCodeCurrency/Math.abs(row.Quantity)) * 1000) / 1000;
                 }
                 if (row.FiscalPeriod >= '0' && row.FiscalPeriod <= Number(oToMonth)) {
                     vItem.EndQty += parseInt(row.Quantity);
                     vItem.EndAmount += parseInt(row.AmountInCompanyCodeCurrency);
-                    // vItem.EndUnitPrice += Math.round((row.AmountInCompanyCodeCurrency/Math.abs(row.Quantity)) * 1000) / 1000;
                 }
 
             })
-            // oResult.setProperty("/", oSumGroup);
+            
            
         },
 
@@ -207,27 +208,26 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
                     var vCheckType = data.MaterialLedgerProcessType;
                     
                     // 합산
-                    const mergeItem = (qtyKey, amountKey, unitPriceKey) => {
+                    const mergeItem = (qtyKey, amountKey) => {
                         vItem[qtyKey] = (vItem[qtyKey] || 0) + parseInt(data.InventoryQty);
                         vItem[amountKey] = (vItem[amountKey] || 0) + parseInt(data.AmountInCompanyCodeCurrency);
-                        // vItem[unitPriceKey] = Math.round((data.AmountInCompanyCodeCurrency / data.InventoryQty) * 1000) / 1000;
                     };
 
                     // 입출고 타입에 따른 변수 네이밍
                     const processTypes = {
-                        '2100': ['PurchInQty', 'PurchInAmount', 'PurchInUnitPrice'],
-                        '2200': ['ProdInQty', 'ProdInAmount', 'ProdInUnitPrice'],
-                        '2900': ['OtherInQty', 'OtherInAmount', 'OtherInUnitPrice'],
-                        '3100': ['ProdOutQty', 'ProdOutAmount', 'ProdOutUnitPrice'],
-                        '3200': ['SalesOutQty', 'SalesOutAmount', 'SalesOutUnitPrice'],
-                        '3900': ['OtherOutQty', 'OtherOutAmount', 'OtherOutUnitPrice']
+                        '2100': ['PurchInQty', 'PurchInAmount'],
+                        '2200': ['ProdInQty', 'ProdInAmount'],
+                        '2900': ['OtherInQty', 'OtherInAmount'],
+                        '3100': ['ProdOutQty', 'ProdOutAmount'],
+                        '3200': ['SalesOutQty', 'SalesOutAmount'],
+                        '3900': ['OtherOutQty', 'OtherOutAmount']
                     };
 
                     // 타입에 따라 process 가져와서 합산
                     Object.keys(processTypes).forEach(mt => {
                         if (that._getProcessType(mt).includes(vCheckType)) {
-                            const [qtyKey, amountKey, unitPriceKey] = processTypes[mt];
-                            mergeItem(qtyKey, amountKey, unitPriceKey);
+                            const [qtyKey, amountKey] = processTypes[mt];
+                            mergeItem(qtyKey, amountKey);
                         }
                     });
 
@@ -238,21 +238,13 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
                     vItem.TotalOutQty = (vItem.ProdOutQty || 0) + (vItem.SalesOutQty || 0) + (vItem.OtherOutQty || 0);
                     vItem.TotalOutAmount = (vItem.ProdOutAmount || 0) + (vItem.SalesOutAmount || 0) + (vItem.OtherOutAmount || 0);
                     
-                    var vOtherOut2Qty = vItem.BegQty + vItem.TotalInQty - Math.abs(vItem.TotalOutQty) - Math.abs(vItem.EndQty);
-                    var vOtherOut2Amount = vItem.BegAmount + vItem.TotalInAmount - vItem.TotalOutAmount - vItem.EndAmount;
-                    // var vOtherOut2UnitPrice = Math.round((vOtherOut2Amount / Math.abs(vOtherOut2Qty)) * 1000) / 1000 || 0;
-                    
-                    vItem.OtherOut2Qty = vOtherOut2Qty;
-                    vItem.OtherOut2Amount = vOtherOut2Amount;
-                    // vItem.OtherOut2UnitPrice = vOtherOut2UnitPrice;
+                    vItem.vOtherOut2Qty = vItem.BegQty + vItem.TotalInQty - Math.abs(vItem.TotalOutQty) - Math.abs(vItem.EndQty);
+                    vItem.vOtherOut2Amount = vItem.BegAmount + vItem.TotalInAmount - vItem.TotalOutAmount - vItem.EndAmount;
                     
                 }
             })
             
             this._getUnitPrice();
-
-            // oResult.setProperty("/", oSumGroup);
-            // oTable.setBusy(false);
 
         },
 
@@ -288,7 +280,7 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
                 data.ProdOutUnitPrice = Math.round((Math.abs(data.ProdOutAmount) / Math.abs(data.ProdOutQty)) * 1000) / 1000 || 0;
                 data.SalesOutUnitPrice = Math.round((Math.abs(data.SalesOutAmount) / Math.abs(data.SalesOutQty)) * 1000) / 1000 || 0;
                 data.OtherOutUnitPrice = Math.round((Math.abs(data.OtherOutAmount) / Math.abs(data.OtherOutQty)) * 1000) / 1000 || 0;
-                data.OtherOut2UnitPrice = Math.round((Math.abs(data.OtherOut2Qty) / Math.abs(data.OtherOut2Amount)) * 1000) / 1000 || 0;
+                data.OtherOut2UnitPrice = Math.round((Math.abs(data.OtherOut2Amount) / Math.abs(data.OtherOut2Qty)) * 1000) / 1000 || 0;
                 data.TotalOutUnitPrice = Math.round((Math.abs(data.TotalOutAmount) / Math.abs(data.TotalOutQty)) * 1000) / 1000 || 0;
 
             });
@@ -370,15 +362,7 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
                 oView.setModel(new JSONModel(), "oGLAccount");
                 var vVHGL = oView.getModel("oGLAccount");
 
-                var gl_p = {
-                    $top: "500000"
-                };
-                var gl_s = [
-                    new Sorter("GlAccount")
-                ];
-                var data  = await Model.readODataModel("YY1_GL_INVLEDGER_CDS", "YY1_GL_INVLEDGER", null, gl_p, gl_s);
-                
-                vVHGL.setProperty("/", data);
+                vVHGL.setProperty("/", oMvGl);
 
                 var oMultiInput = this.byId("MI_GL");
                 this._oMultiInput = oMultiInput;
@@ -523,43 +507,90 @@ function (Controller, Model, Sorter, Filter, FilterOperator, SearchField, JSONMo
         },
 
         // 엑셀 다운로드
-        onExport: function () {
-            let oBExcel = this.getView().byId(Control.Button.B_Excel);
-            oBExcel.setBusy(true);
+        onExport:function(){
 
-            let oTreeTable = this.getView().byId(Control.Table.T_Main);
-            let oRowBinding = oTreeTable.getBinding('rows');
+            var aColumns = oTable.getColumns(), 
+                aColumnConfig = [];
+                
+            aColumns.forEach(function(col){
+                var sItems = col.getTemplate().mAggregations.items[0];
+                
+                var sProperty = sItems.getBindingPath("text");
+                console.log("check sItems", sItems);
+                console.log("check sProperty", sProperty);
 
-            this.getView().getModel().read('/Main/$count', {
-                urlParameters: this._makeURL(oRowBinding.sFilterParams),
-                success: function (oResult) {
-                    this.count = oResult;
-                    this.getView().getModel().read('/Main', {
-                        urlParameters: this._makeURL(oRowBinding.sFilterParams, oResult),
-                        success: function (oResult) {
-                            this.data = oResult.results
-                            let aCols, oSettings, oSheet;
-                            aCols = this._createColumnConfig();
+                var sText = "";
+                if(col.getLabel() === null) {
+                    // switch (sProperty.) {
+                    //     case value:
+                            
+                    //         break;
+                    
+                    //     default:
+                    //         break;
+                    // }
 
-                            oSettings = {
-                                workbook: {
-                                    columns: aCols,
-                                    hierarchyLevel: "HierarchyLevel"
-                                },
-                                dataSource: this.data,
-                                fileName: this.i18n.getText("title") + (new Date()).toISOString() + '.xlsx',
-                                worker: true // We need to disable worker because we are using a Mockserver as OData Service
-                            };
 
-                            oSheet = new Spreadsheet(oSettings);
-                            oSheet.build().finally(function () {
-                                oSheet.destroy();
-                                oBExcel.setBusy(false);
-                            });
-                        }.bind(this)
-                    })
-                }.bind(this)
-            })
+
+                    sText = col.getMultiLabels()[0].getText().trim();
+                }
+                
+                console.log("check sText", sText);
+                
+                // // 숫자 필드에 대한 쉼표 처리
+                // if(col.getLabel().getText() === "현잔액" || col.getLabel().getText().indexOf("/") > 0 ){
+                //     var obj = {
+                //         label : sText,
+                //         property : sProperty,
+                //         type: sap.ui.export.EdmType.Number,
+                //         delimiter : true,
+                //         scales : 0,
+                //         width: 20,
+                //     };
+                // }else{
+                //     var obj = {
+                //         label : sText,
+                //         property : sProperty,
+                //         width: 20,
+                //     };
+                // }
+                
+                // var bVisible = col.getVisible();
+                // if(bVisible){
+                //     aColumnConfig.push(obj);
+                // }
+            });
+            
+            // var oRowBinding, oSettings, oSheet;
+            //     oRowBinding = _oTable.getBinding();
+            // var oModel = oRowBinding.getModel(),
+            //     sPath = oRowBinding.sPath,
+            //     aModelData = oModel.getProperty(sPath);
+            
+            // oSettings = {
+            //     workbook: { columns: aColumnConfig },
+            //     dataSource: aModelData,
+            //     fileName : "수불부_worldex" + ".xlsx"
+            // };
+    
+            // oSheet = new Spreadsheet(oSettings);
+            // oSheet.build().finally(function() {
+            //     oSheet.destroy();
+            // });
+        },
+
+        excelBindingInfo: function (col) {
+            var colTemp = col.getTemplate(),
+            sResult = "";
+    
+            if (colTemp.getText) {
+                sResult = colTemp.getBindingInfo("text");
+            } else if (colTemp.getValue) {
+                sResult = colTemp.getBindingInfo("value");
+            } else {
+                return sResult;
+            }
+            return sResult;
         },
 
         formatCurrency: function (price, currency) {

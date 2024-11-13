@@ -80,7 +80,7 @@ function (JSONModel, Device, UI5Date, ODataModel, Filter, FilterOperator) {
         },
 
         // 필터
-        setFilter : function(oControl, vFieldName){
+        setFilter : function(oControl, vFieldName, oMvGl){
             var oFilter = null, vValue = null;
             
             if(oControl instanceof sap.m.MultiComboBox){
@@ -92,6 +92,15 @@ function (JSONModel, Device, UI5Date, ODataModel, Filter, FilterOperator) {
                 }
             }else if(oControl instanceof sap.m.MultiInput){
                 vValue = oControl.getTokens();
+                if(vFieldName == 'GLAccount' && vValue.length == 0) {
+                    oMvGl.forEach(data => {
+                        var oNewToken = new sap.m.Token({
+                            key: data.GlAccount, 
+                            text: data.GLAccountName
+                        });
+                        vValue.push(oNewToken);
+                    });
+                }
                 if(vValue.length){
                     oFilter = new Filter({
                         filters : vValue.map(function(oToken){

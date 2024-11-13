@@ -296,7 +296,7 @@
                                 <table:template>
                                     <HBox justifyContent="Start">
                                         <Text text="{
-                                                parts: ['oResult>ProdInQty', 'oResult>CompanyCodeCurrency'], 
+                                                parts: ['oResult>ProdInUnitPrice', 'oResult>CompanyCodeCurrency'], 
                                                 type:'sap.ui.model.type.Currency',
                                                 formatter: '.formatCurrency'
                                             }" wrapping="false" />       
